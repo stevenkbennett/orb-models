@@ -180,7 +180,7 @@ class ConservativeForcefieldRegressor(nn.Module):
     def predict(
         self, batch: base.AtomGraphs, split: bool = False
     ) -> Dict[str, torch.Tensor]:
-        """Predict energy, forces, and stress."""
+        """Predict energy, forces, stress, and edge forces."""
         preds = self(batch)
 
         out = {}

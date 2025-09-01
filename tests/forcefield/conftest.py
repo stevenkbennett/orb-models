@@ -213,3 +213,70 @@ def euclidean_norm():
 def euclidean_norm_invariant():
     minimum = [0.0, 0.0, 0.0]
     return EuclideanNormModel(minimum)
+
+
+# Mock LAMMPS interface for testing
+class MockMLIAPUnified:
+    """Mock base class for LAMMPS MLIAP interface."""
+    def __init__(self):
+        pass
+
+
+@pytest.fixture
+def mock_orb_mliap_unified():
+    """Fixture that creates a properly mocked ORB_MLIAPUnified instance."""
+    from unittest.mock import Mock, patch
+    import torch
+    
+    # Mock LAMMPS modules
+    with patch.dict('sys.modules', {
+        'lammps': Mock(),
+        'lammps.mliap': Mock(),
+        'lammps.mliap.mliap_unified_abc': Mock(MLIAPUnified=MockMLIAPUnified)
+    }):
+        from scripts.patch_lammps import ORB_MLIAPUnified, OrbPairEdgesForceWrapper
+        
+        def create_interface(conservative_regressor, **kwargs):
+            """Create a properly initialized ORB_MLIAPUnified instance."""
+            # Default parameters
+            params = {
+                'radius': 6.0,
+                'max_num_neighbors': 20,
+                'device': 'cpu',
+                'dtype': torch.float32,
+                **kwargs
+            }
+            
+            # Create interface manually to avoid super() call issues
+            interface = object.__new__(ORB_MLIAPUnified)
+            interface.model = OrbPairEdgesForceWrapper(conservative_regressor)
+            interface.step = 0
+            interface.radius = params['radius']
+            interface.max_num_neighbors = params['max_num_neighbors']
+            interface.num_species = 118
+            interface.device = torch.device(params['device'])
+            interface.dtype = params['dtype']
+            
+            return interface
+        
+        return create_interface
+
+
+@pytest.fixture
+def lammps_interface_classes():
+    """Fixture that provides the mocked LAMMPS interface classes."""
+    from unittest.mock import Mock, patch
+    
+    with patch.dict('sys.modules', {
+        'lammps': Mock(),
+        'lammps.mliap': Mock(),
+        'lammps.mliap.mliap_unified_abc': Mock(MLIAPUnified=MockMLIAPUnified)
+    }):
+        from scripts.patch_lammps import (OrbPairEdgesForceWrapper, ORB_MLIAPUnified,
+                                          get_edge_vectors_and_lengths)
+        
+        return {
+            'OrbPairEdgesForceWrapper': OrbPairEdgesForceWrapper,
+            'ORB_MLIAPUnified': ORB_MLIAPUnified,
+            'get_edge_vectors_and_lengths': get_edge_vectors_and_lengths
+        }
